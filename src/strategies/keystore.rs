@@ -82,17 +82,17 @@ impl KeyStore {
     pub async fn acquire_key(&self) -> Result<(String, PrivateKey), KeyStoreError> {
         loop {
             // Create a randomized list of keys to check
-            let key_entries: Vec<_> = self.keys.iter().collect();
-            let mut shuffled_keys: Vec<_> = key_entries.into_iter().collect();
+            let mut shuffled_keys: Vec<_> = self.keys.iter().collect();
             shuffled_keys.shuffle(&mut rand::thread_rng());
             
             for (public_address, key_mutex) in shuffled_keys {
-                let mut key_data = key_mutex.lock().await;
-                let (private_key, in_use) = &mut *key_data;
-                if !*in_use {
-                    *in_use = true;
-                    self.keys_in_use_count.fetch_add(1, Ordering::Relaxed);
-                    return Ok((public_address.clone(), private_key.clone()));
+                if let Ok(mut key_data) = key_mutex.try_lock() {
+                    let (private_key, in_use) = &mut *key_data;
+                    if !*in_use {
+                        *in_use = true;
+                        self.keys_in_use_count.fetch_add(1, Ordering::Relaxed);
+                        return Ok((public_address.clone(), private_key.clone()));
+                    }
                 }
             }
             info!("No keys available, waiting for notification");
