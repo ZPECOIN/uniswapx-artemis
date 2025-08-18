@@ -1,4 +1,5 @@
 use rand::seq::IteratorRandom;
+use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -80,7 +81,12 @@ impl KeyStore {
 
     pub async fn acquire_key(&self) -> Result<(String, PrivateKey), KeyStoreError> {
         loop {
-            for (public_address, key_mutex) in &self.keys {
+            // Create a randomized list of keys to check
+            let key_entries: Vec<_> = self.keys.iter().collect();
+            let mut shuffled_keys: Vec<_> = key_entries.into_iter().collect();
+            shuffled_keys.shuffle(&mut rand::thread_rng());
+            
+            for (public_address, key_mutex) in shuffled_keys {
                 let mut key_data = key_mutex.lock().await;
                 let (private_key, in_use) = &mut *key_data;
                 if !*in_use {
