@@ -1,4 +1,5 @@
 use rand::seq::IteratorRandom;
+use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -80,13 +81,18 @@ impl KeyStore {
 
     pub async fn acquire_key(&self) -> Result<(String, PrivateKey), KeyStoreError> {
         loop {
-            for (public_address, key_mutex) in &self.keys {
-                let mut key_data = key_mutex.lock().await;
-                let (private_key, in_use) = &mut *key_data;
-                if !*in_use {
-                    *in_use = true;
-                    self.keys_in_use_count.fetch_add(1, Ordering::Relaxed);
-                    return Ok((public_address.clone(), private_key.clone()));
+            // Create a randomized list of keys to check
+            let mut shuffled_keys: Vec<_> = self.keys.iter().collect();
+            shuffled_keys.shuffle(&mut rand::thread_rng());
+            
+            for (public_address, key_mutex) in shuffled_keys {
+                if let Ok(mut key_data) = key_mutex.try_lock() {
+                    let (private_key, in_use) = &mut *key_data;
+                    if !*in_use {
+                        *in_use = true;
+                        self.keys_in_use_count.fetch_add(1, Ordering::Relaxed);
+                        return Ok((public_address.clone(), private_key.clone()));
+                    }
                 }
             }
             info!("No keys available, waiting for notification");
