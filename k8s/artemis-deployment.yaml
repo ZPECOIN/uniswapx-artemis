@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: artemis-config
+  namespace: default
+data:
+  CHAIN_ID: "1"
+  ORDER_TYPE: "DutchV3"
+  BID_PERCENTAGE: "5"
+  FALLBACK_BID_SCALE_FACTOR: "100"
+  MIN_BLOCK_PERCENTAGE_BUFFER: "120"
+  CLOUDWATCH_METRICS: "false"
+  LOG_LEVEL: "info"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: artemis-secrets
+  namespace: default
+type: Opaque
+stringData:
+  RPC_HTTP_URL: "https://eth-mainnet.g.alchemy.com/v2/your-api-key"
+  RPC_WSS_URL: "wss://eth-mainnet.g.alchemy.com/v2/your-api-key"
+  PRIVATE_KEY: "your-private-key-here"
+  EXECUTOR_ADDRESS: "0x1234567890abcdef1234567890abcdef12345678"
+  UNISWAPX_API_KEY: "your-uniswapx-api-key"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uniswapx-artemis
+  namespace: default
+  labels:
+    app: uniswapx-artemis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: uniswapx-artemis
+  template:
+    metadata:
+      labels:
+        app: uniswapx-artemis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: artemis
+        image: uniswapx-artemis:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: artemis-config
+        - secretRef:
+            name: artemis-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "0.5"
+          limits:
+            memory: "2Gi"
+            cpu: "1.0"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - server
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pgrep
+            - server
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uniswapx-artemis-service
+  namespace: default
+  labels:
+    app: uniswapx-artemis
+spec:
+  selector:
+    app: uniswapx-artemis
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

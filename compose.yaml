@@ -1,20 +1,72 @@
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Docker Compose reference guide at
-# https://docs.docker.com/go/compose-spec-reference/
+# UniswapX Artemis Docker Compose Configuration
+# Production-ready configuration with environment variable support
 
-# Here the instructions define your application as a service called "server".
-# This service is built from the Dockerfile in the current directory.
-# You can add other services your application may depend on here, such as a
-# database or a cache. For examples, see the Awesome Compose repository:
-# https://github.com/docker/awesome-compose
 services:
-  server:
+  artemis:
     build:
       context: .
       target: final
-    ports:
-      - 1559:1559
-    restart: always
+    container_name: uniswapx-artemis
+    restart: unless-stopped
+    
+    # Environment variables - load from .env file
+    env_file:
+      - .env
+    
+    # Additional environment variables
+    environment:
+      - RUST_LOG=${LOG_LEVEL:-info}
+      - RUST_BACKTRACE=1
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "server"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    
+    # Volume for persistent data (if needed)
+    volumes:
+      - artemis-data:/app/data
+    
+    # Network configuration
+    networks:
+      - artemis-network
+
+# Named volumes
+volumes:
+  artemis-data:
+    driver: local
+
+# Networks
+networks:
+  artemis-network:
+    driver: bridge
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to

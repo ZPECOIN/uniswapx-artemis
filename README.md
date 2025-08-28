@@ -6,15 +6,60 @@ Feel free to fork and modify to run any strategies you wish to fill UniswapX ord
 
 # Usage
 
+## Quick Start with Docker
+
+1. **Configure Environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+2. **Deploy:**
+   ```bash
+   ./scripts/deploy.sh
+   ```
+
+3. **Monitor:**
+   ```bash
+   ./scripts/monitor.sh -c  # Continuous monitoring
+   ```
+
+## Manual Setup
+
 First you must deploy an executor contract that implements the [IReactorCallback](https://github.com/Uniswap/UniswapX/blob/main/src/interfaces/IReactorCallback.sol) interface. This sample currently uses the provided [SwapRouter02Executor](https://github.com/Uniswap/UniswapX/blob/main/src/sample-executors/SwapRouter02Executor.sol).
 
 Then update the address constant in [uniswapx_strategy](./src/strategies/uniswapx_strategy.rs) to point to your executor contract.
 
 Finally, run the bot with the following command:
 
-```
+```bash
 cargo run -- --http <http RPC url> --mevblocker-http <mevblocker http url> --private-key <private key> --bid-percentage <percent of profit to share as gas> --order-type <Priority|DutchV2|DutchV3> --chain-id <chain id> --executor-address <executor address>
 ```
+
+## Deployment Options
+
+### Local Development
+```bash
+# Using cargo directly
+cargo run
+
+# Using Docker
+docker compose up -d
+```
+
+### Production Deployment
+```bash
+# Docker with production environment
+./scripts/deploy.sh -e production
+
+# AWS ECS
+./scripts/deploy-aws.sh --cluster-name my-cluster
+
+# Kubernetes
+./scripts/deploy-k8s.sh --namespace production
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 # Collectors
 
