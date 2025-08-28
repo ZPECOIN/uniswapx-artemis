@@ -44,10 +44,25 @@ COPY --from=build /bin/server /bin/
 # Expose the port that the application listens on.
 EXPOSE 1559
 
+# Create app user for security
+RUN groupadd -r artemis && useradd -r -g artemis artemis
+
+# Create directory for configuration files
+RUN mkdir -p /app/config && chown artemis:artemis /app/config
+
 # Add Tini
 # Tini helps with the problem of accidentally created zombie processes, and also makes sure that the signal handlers work
 # see https://github.com/krallin/tini for detail
 ENV TINI_VERSION=v0.19.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
+
+# Switch to non-root user
+USER artemis
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD pgrep server || exit 1
+
 ENTRYPOINT ["/tini", "--"]
+CMD ["/bin/server"]

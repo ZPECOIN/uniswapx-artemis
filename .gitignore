@@ -1,3 +1,30 @@
 /target
 
 logs*
+
+# Environment files (sensitive data)
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# Private keys and secrets
+*.key
+*.pem
+keyfile.json
+secrets/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker-data/
